@@ -41,3 +41,63 @@ else
     fi
 
 fi
+
+echo ""
+echo "OPEN PORTS"
+echo "----------------------------------------"
+
+echo "Protocol   State      Port     Address                  Process"
+open_ports=$(sudo ss -tulnpH | awk '{
+    port=$5
+    sub(/^.*:/, "", port)
+
+    address=$5
+    sub(/:[^:]*$/, "", address)
+
+    printf "%-10s %-10s %-8s %-25s %s\n", $1, $2, port, address, $7
+}')
+echo "$open_ports"
+
+
+
+echo ""
+echo "SSH CONFIGURATION"
+echo "----------------------------------------"
+
+if ! command -v sshd &> /dev/null; then
+    echo "Status: PASS"
+    echo "SSH Server: Not installed"
+else
+    ssh_status=$(sudo systemctl is-active ssh)
+
+    if [[ "$ssh_status" == "active" ]]; then
+        echo "Status: WARN"
+        echo "SSH Server: Installed and active"
+
+    elif [[ "$ssh_status" == "inactive" ]]; then
+        echo "Status: PASS"
+        echo "SSH Server: Installed but inactive"
+    fi
+fi
+
+
+
+
+echo ""
+echo "USER & PRIVILEGE AUDIT"
+echo "----------------------------------------"
+
+echo "UID 0 ACCOUNTS"
+awk -F: '$3 == 0 {print $1}' /etc/passwd
+
+echo ""
+
+echo "INTERACTIVE SHELLS"
+awk -F: '$7 !~ /(nologin|false)$/ {print $1, $7}' /etc/passwd
+
+echo ""
+
+echo "SUDO GROUP MEMBERS"
+getent group sudo | cut -d: -f4
+
+echo ""
